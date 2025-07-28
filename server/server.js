@@ -1,114 +1,59 @@
-const express = require("express")
-const mongoose = require("mongoose")
-const cors = require("cors")
-const helmet = require("helmet")
-const rateLimit = require("express-rate-limit")
-const morgan = require("morgan")
-const http = require("http")
-const socketIo = require("socket.io")
-require("dotenv").config()
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+require("dotenv").config();
 
-const app = express()
-const server = http.createServer(app)
-const io = socketIo(server, {
-  cors: {
-    origin: ["http://localhost:5173"], 
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
-  },
-})
+const app = express();
 
+// Middleware
+app.use(cors());
+app.use(express.json());
 
-const authRoutes = require("./routes/auth")
-const orderRoutes = require("./routes/orders")
-const productRoutes = require("./routes/products")
-const customerRoutes = require("./routes/customers")
-const statsRoutes = require("./routes/stats")
+// 🔗 MongoDB Connection
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  "mongodb+srv://imaran:imaran@cluster0.ecsubbq.mongodb.net/oms?retryWrites=true&w=majority";
 
-
-app.use(helmet())
-
-
-app.use(
-  cors({
-    origin: ["http://localhost:5173"],
-    credentials: true,
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+mongoose
+  .connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
   })
-)
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err.message);
+    process.exit(1);
+  });
 
-app.use(morgan("combined"))
-app.use(express.json())
+// 🛣 Route Imports
+const authRoutes = require("./routes/auth");
+const orderRoutes = require("./routes/orders");
+const productRoutes = require("./routes/products");
+const customerRoutes = require("./routes/customers");
+const statsRoutes = require("./routes/stats");
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 100,
-})
-app.use(limiter)
+// 🧭 API Routes
+app.use("/api/auth", authRoutes); // 🔐 Auth routes
+app.use("/api/orders", orderRoutes); // 📦 Orders routes
+app.use("/api/products", productRoutes); // 🛍 Products routes
+app.use("/api/customers", customerRoutes); // 👥 Customers routes
+app.use("/api/stats", statsRoutes); // 📊 Stats routes
 
-
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/oms"
-
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-
-mongoose.connection.on("connected", () => {
-  console.log("Connected to MongoDB")
-})
-
-mongoose.connection.on("error", (err) => {
-  console.error("MongoDB connection error:", err)
-})
-
-
-io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id)
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id)
-  })
-})
-
-
-app.use((req, res, next) => {
-  req.io = io
-  next()
-})
-
-
-app.use("/api/auth", authRoutes)
-app.use("/api/orders", orderRoutes)
-app.use("/api/products", productRoutes)
-app.use("/api/customers", customerRoutes)
-app.use("/api/stats", statsRoutes)
-
-
+// ✅ Health Check
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
-    timestamp: new Date().toISOString(),
-    cors: "Only local frontend allowed",
-  })
-})
+    time: new Date().toISOString()
+  });
+});
 
-
-app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(500).json({ error: "Something went wrong!" })
-})
-
-
+// ⚠️ 404 Handler
 app.use("*", (req, res) => {
-  res.status(404).json({ error: "Route not found" })
-})
+  res.status(404).json({ error: "Route not found" });
+});
 
-const PORT = process.env.PORT || 5000
-
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-  console.log(`CORS enabled for http://localhost:5173`)
-})
-
-module.exports = { app, io }
+// 🚀 Server Startup
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
+});
