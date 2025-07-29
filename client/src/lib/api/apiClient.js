@@ -3,7 +3,8 @@
 
 const API_BASE_URL = import.meta.env.DEV
   ? "http://localhost:5000" 
-  : "https://management-order-2.onrender.com"; 
+  : "https://management-order-2.onrender.com"; // Render backend
+
 
 
 export const apiCall = async (endpoint, options = {}) => {
