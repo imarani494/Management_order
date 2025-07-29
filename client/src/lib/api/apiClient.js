@@ -2,7 +2,7 @@
 
 
 const API_BASE_URL = import.meta.env.DEV
-  ? "http://localhost:5000" 
+  ? "http://localhost:5000" // Local backend
   : "https://management-order-2.onrender.com"; // Render backend
 
 
